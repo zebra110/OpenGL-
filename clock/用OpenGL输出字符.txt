@@ -1,0 +1,36 @@
+要显示字符，就需要通过操作系统，把绘制字符的动作装到显示列表中，然后我们调用显示列表即可绘制字符。
+
+假如我们要显示的文字全部是ASCII字符，则总共只有0到127这128种可能。
+因此可以预先把所有的字符分别装到对应的显示列表中，然后在需要时调用这些显示列表。
+Windows系统中，可以使用wglUseFontBitmaps函数来批量的产生显示字符用的显示列表。
+函数有四个参数：
+第一个参数是HDC：只要知道调用wglGetCurrentDC函数，就可以得到一个HDC了。具体的情况可以看下面的代码。
+第二个参数表示第一个要产生的字符，因为我们要产生0到127的字符的显示列表，所以填0。
+第三个参数表示要产生字符的总个数，因为我们要产生0到127的字符的显示列表，总共有128个字符，所以填128。
+第四个参数表示第一个字符所对应显示列表的编号。假如这里填1000，则第一个字符的绘制命令将被装到第1000号显示列表，第二个字符的绘制命令将被装到第1001号显示列表，依次类推。
+我们可以先用glGenLists申请128个连续的显示列表编号，然后把第一个显示列表编号填在这里。
+还要说明一下，因为wglUseFontBitmaps是Windows系统特有的函数，所以在使用前需要加入头文件：#include <windows.h>。
+
+#include <windows.h>
+
+// ASCII字符总共只有0到127，一共128种字符
+#define MAX_CHAR       128
+
+void drawString(const char* str) {
+    static int isFirstCall = 1;
+    static GLuint lists;
+
+    if( isFirstCall ) { // 如果是第一次调用，执行初始化
+                        // 为每一个ASCII字符产生一个显示列表
+        isFirstCall = 0;
+
+        // 申请MAX_CHAR个连续的显示列表编号
+        lists = glGenLists(MAX_CHAR);
+
+        // 把每个字符的绘制命令都装到对应的显示列表中
+        wglUseFontBitmaps(wglGetCurrentDC(), 0, MAX_CHAR, lists);
+    }
+    // 调用每个字符对应的显示列表，绘制每个字符
+    for(; *str!='\0'; ++str)
+        glCallList(lists + *str);
+}
